@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>区域生长图像分割</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h1>区域生长图像分割</h1>
+    <div class="container">
+        <div class="left-panel">
+            <input type="file" id="fileInput">
+            <button id="uploadBtn">上传图像</button>
+            <img id="imageDisplay" style="display:none;" onclick="getClickPosition(event)">
+        </div>
+        <div class="divider"></div>
+        <div class="right-panel" id="resultContainer"></div>
+    </div>
+
+    <script>
+        document.getElementById('uploadBtn').onclick = function() {
+            const fileInput = document.getElementById('fileInput');
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            }).then(response => response.json()).then(data => {
+                if (data.image_path) {
+                    const img = document.getElementById('imageDisplay');
+                    img.src = data.image_path;
+                    img.style.display = 'block';
+                }
+            });
+        };
+
+        function getClickPosition(event) {
+            const rect = event.target.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+
+            const imagePath = event.target.src.replace(window.location.origin + "/", "");
+            console.log('imagePath:', imagePath);
+
+            fetch('/process', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    image_path: imagePath,
+                    x: x,
+                    y: y
+                })
+            }).then(response => response.json()).then(data => {
+                const resultContainer = document.getElementById('resultContainer');
+                resultContainer.innerHTML = ''; // 清空之前的结果
+
+                if (data.result_overlay_path) {
+                    const overlayImg = new Image();
+                    overlayImg.src = data.result_overlay_path;
+                    resultContainer.appendChild(overlayImg);
+                }
+
+                if (data.result_segmented_path) {
+                    const segmentedImg = new Image();
+                    segmentedImg.src = data.result_segmented_path;
+                    resultContainer.appendChild(segmentedImg);
+                }
+            });
+        }
+    </script>
+</body>
+</html>

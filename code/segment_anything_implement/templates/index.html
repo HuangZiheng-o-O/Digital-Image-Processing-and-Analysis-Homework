@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>segment-anything 图像分割</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h1>segment-anything 图像分割</h1>
+    <div class="container">
+        <div class="left-panel">
+            <input type="file" id="fileInput">
+            <img id="imageDisplay" style="display:none;">
+        </div>
+        <div class="divider"></div>
+        <div class="right-panel" id="resultContainer"></div>
+    </div>
+
+    <script>
+        let uploadedImagePath = ''; // 定义全局变量来存储上传的图片路径
+
+        // 当用户选择文件时，自动上传并处理
+        document.getElementById('fileInput').onchange = function() {
+            const fileInput = document.getElementById('fileInput');
+            const formData = new FormData();
+
+            // 检查是否选择了文件
+            if (!fileInput.files.length) {
+                alert("请选择要上传的图片");
+                return;
+            }
+
+            formData.append('file', fileInput.files[0]);
+
+            // 每次上传前清空之前的结果和图片路径
+            uploadedImagePath = '';
+            document.getElementById('resultContainer').innerHTML = '';
+            document.getElementById('imageDisplay').style.display = 'none';
+
+            // 上传图片
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            }).then(response => response.json()).then(data => {
+                if (data.image_path) {
+                    uploadedImagePath = data.image_path;  // 保存上传后的图片路径
+                    const img = document.getElementById('imageDisplay');
+
+                    // 禁用浏览器缓存，通过附加随机参数确保每次加载的是最新图片
+                    img.src = data.image_path + '?t=' + new Date().getTime();
+                    img.style.display = 'block';
+
+                    // 上传完成后立即处理图片
+                    fetch('/process', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            image_path: uploadedImagePath
+                        })
+                    }).then(response => response.json()).then(data => {
+                        const resultContainer = document.getElementById('resultContainer');
+                        resultContainer.innerHTML = ''; // 清空之前的结果
+
+                        if (data.result_image_path) {
+                            const resultImg = new Image();
+                            // 同样禁用缓存
+                            resultImg.src = data.result_image_path + '?t=' + new Date().getTime();
+                            resultContainer.appendChild(resultImg);
+                        }
+                    });
+                }
+            });
+        };
+    </script>
+</body>
+</html>
